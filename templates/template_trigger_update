@@ -1,0 +1,14 @@
+UPDATE I
+SET 
+{% for related_table in related_table_names %}
+    I.Id{{ related_table }}={{schema_table}}.{{related_table}}.Id{{ related_table }},
+{% endfor %}
+{% for column in columns_not_related_no_pk %}
+    I.{{ column }}=II.{{ column }} {{ "," if not loop.last }}
+{% endfor %}
+FROM {{ schema_table }}.{{ table_name }} I
+
+INNER JOIN INSERTED II ON I.Id{{ table_name }} = II.Id{{ table_name }}
+{% for related_table in related_table_names %}
+    INNER JOIN {{ related_table }} ON I.Id{{ related_table }} = {{schema_table}}.{{ related_table }}.Id{{ related_table }}
+{% endfor %}

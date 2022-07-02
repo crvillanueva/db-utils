@@ -1,0 +1,21 @@
+BEGIN TRY
+        BEGIN TRANSACTION
+            {{ % content % }}
+        COMMIT TRANSACTION
+    END TRY
+    BEGIN CATCH
+	   Declare @Error Varchar(Max) = ERROR_MESSAGE()
+	   PRINT
+		  'Error ' + CONVERT(VARCHAR(50), ERROR_NUMBER()) +
+		  ', Severity ' + CONVERT(VARCHAR(5), ERROR_SEVERITY()) +
+		  ', State ' + CONVERT(VARCHAR(5), ERROR_STATE()) +
+		  ', Line ' + CONVERT(VARCHAR(5), ERROR_LINE())
+
+	   PRINT @Error
+	   Raiserror(@Error, 16,1)
+
+		IF XACT_STATE() <> 0
+		BEGIN
+			ROLLBACK TRANSACTION
+		END
+	END CATCH;

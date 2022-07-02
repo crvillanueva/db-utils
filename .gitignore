@@ -1,0 +1,61 @@
+# Byte-compiled / optimized / DLL files
+**/__pycache__
+
+# Testing
+**/.pytest_cache
+
+# mypy
+**/.mypy_cache/
+**/.dmypy.json
+**/dmypy.json
+
+# Jupyter Notebook
+**/.ipynb_checkpoints
+
+# VSCode
+.vscode
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Azurite artifacts
+__blobstorage__
+__queuestorage__
+__azurite_db*__.json
+.python_packages
+
+# Environment variables
+*.env
+env.*
+environments/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Azure Functions artifacts
+bin
+obj
+appsettings.json
+local.settings.json
+.python_packages
+
+# .ignore files
+# .gitignore
+# .dockerignore
+
+# App specifics
+dist/
+sampledata/
+az*.ini
+jpnb/
