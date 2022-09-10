@@ -15,10 +15,11 @@ pyodbc = "^4.0.32"
 nltk = "^3.7"
 sqlparse = "^0.4.2"
 pydantic = "^1.9.1"
-sqlacodegen = "^2.3.0"
+sqlacodegen = "3.0.0rc1"
 stringcase = "^1.2.0"
 PyPika = "^0.48.9"
 Jinja2 = "^3.1.2"
+psycopg2-binary = "^2.9.3"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.961"

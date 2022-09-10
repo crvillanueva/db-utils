@@ -1,15 +1,15 @@
-
 from typing import List
 
 import typer
 from sqlalchemy import create_engine
 
 from db_utils.exceptions import NoDBUrlFoundException
-from db_utils.url import get_db_url_from_env_file
+from db_utils.url import get_db_url_value_from_env_file
 
 from .trigger_generator import inspect_related_tables
 
 app = typer.Typer()
+
 
 @app.callback()
 def callback():
@@ -19,12 +19,15 @@ def callback():
 
 
 @app.command()
-def viewgen(table: str = typer.Argument(None), schema: str = typer.Option(None, "--schema", "-s")):
+def viewgen(
+    table: str = typer.Argument(None),
+    schema: str = typer.Option(None, "--schema", "-s"),
+):
     """
     Create Pydantic models from SQLAlchemy models.
     """
     try:
-        db_url = get_db_url_from_env_file(None)
+        db_url = get_db_url_value_from_env_file(None)
     except FileNotFoundError as e:
         typer.secho(str(e), fg=typer.colors.RED, bold=True)
         raise typer.Exit(1)

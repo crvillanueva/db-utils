@@ -18,10 +18,10 @@ from db_utils.utils import get_stem_word
 
 
 def inspect_related_tables(
-    CONNECTION_URL: str, table_name: str, schema_name: Optional[str] = None
+    db_url: str, table_name: str, schema_name: Optional[str] = None
 ):
 
-    engine = create_engine(CONNECTION_URL, future=True)
+    engine = create_engine(db_url, future=True)
 
     metadata = MetaData(schema=schema_name)
 
@@ -94,8 +94,9 @@ def inspect_related_tables(
     print(sql_create_view)
     # SECTION Create TRIGGER
     import pypika
+
     table_pypi = pypika.Table(table_to_inspect.name, schema=schema_name, alias="I")
-    
+
     template_trigger_update = f"""
 CREATE TRIGGER [IOV].[trg_{view_name}_U]
 ON {view_name}
@@ -186,8 +187,14 @@ def get_related_tables_main_columns(related_tables: List[Table]):
     return main_columns_related_tables
 
 
-def create_triggers_str(table_name: str, schema_name: str, related_tables_names: List[str], columns_not_related_no_pk: List[str]):
+def create_triggers_str(
+    table_name: str,
+    schema_name: str,
+    related_tables_names: List[str],
+    columns_not_related_no_pk: List[str],
+):
     from jinja2 import Environment, PackageLoader, select_autoescape
+
     env = Environment(
         loader=FileSystemLoader("templates"),
         # autoescape=select_autoescape()
@@ -200,12 +207,14 @@ def create_triggers_str(table_name: str, schema_name: str, related_tables_names:
         "view_name": view_name,
         "related_table_names": related_tables_names,
         "schema_table": schema_name,
-        "columns_not_related_no_pk": columns_not_related_no_pk
+        "columns_not_related_no_pk": columns_not_related_no_pk,
     }
-    string_trigger_template = format_sql(template.render(**data), reindent=True,
+    string_trigger_template = format_sql(
+        template.render(**data),
+        reindent=True,
         reindent_aligned=False,
         keyword_case="upper",
-    ) 
+    )
     final_trigger_template = f"""
 CREATE TRIGGER [IOV].[trg_{ table_name }_U]
 ON { view_name }
@@ -218,16 +227,17 @@ END
 
     print(final_trigger_template)
 
+
 #     import pypika
 #     from pypika import Query, Tables
 #     table_pypi = pypika.Table(table_name, schema=schema_name, alias="I")
 #     related_tables = Tables(*related_tables_names)
-    
-    
+
+
 #     query_trigger = Query.update(table_pypi).set()
 #     for table in related_tables:
 #         query_trigger.join(table)
-    
+
 #     view_name = f"IOV.GV_{table_name}"
 #     template_trigger_update = f"""
 # CREATE TRIGGER [IOV].[trg_{view_name}_U]
@@ -247,14 +257,23 @@ END
 #     INNER JOIN hnv.Instrumentos i2 ON I.IdInstrumentos = i2.IdInstrumentos
 # END
 #     """
-    
+
 if __name__ == "__main__":
-    create_triggers_str("InstalacionInstrumentos", "hnv", ["Infraestructuras", "Instrumentos"], columns_not_related_no_pk=["FechaInstalacion", "FechaDesintalacion", "Comentarios"])
+    create_triggers_str(
+        "InstalacionInstrumentos",
+        "hnv",
+        ["Infraestructuras", "Instrumentos"],
+        columns_not_related_no_pk=[
+            "FechaInstalacion",
+            "FechaDesintalacion",
+            "Comentarios",
+        ],
+    )
     # create_triggers_str("InstalacionInstrumentos", "hnv", related_names=["Infraestructuras", "Instrumentos"])
     # inspect_related_tables(
     #     "mssql+pyodbc://adm_hidronvstg@hidronv-stg-dbs:sVQ4Wwwg3wRUJags@hidronv-stg-dbs.database.windows.net:1433/hidronv-stg-db?driver=ODBC+Driver+17+for+SQL+Server",
     #     schema_name="hnv",
     #     table_name="InstalacionInstrumentos",
-        # table_name="GV_InstalacionIntrumentos",
-        # schema_name="IOV",
+    # table_name="GV_InstalacionIntrumentos",
+    # schema_name="IOV",
     # )
