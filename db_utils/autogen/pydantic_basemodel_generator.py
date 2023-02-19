@@ -1,10 +1,10 @@
-import string
 from typing import Container, List, Optional, Type
 
 import stringcase
 from pydantic import BaseConfig
 from sqlalchemy import Column, MetaData
 from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm.properties import ColumnProperty
 
@@ -81,8 +81,9 @@ def sqlalchemy_model_to_pydantic_model(
 
 
 
-def main(engine, schema_name: Optional[str] = None, tables: Optional[List[str]] = None):
-    
+def main(engine: Engine, schema_name: Optional[str] = None, tables: Optional[List[str]] = None):
+    """Create Pydantic models from SQLAlchemy models."""
+
     metadata = MetaData()
     if not tables:
         metadata.reflect(engine, schema=schema_name)

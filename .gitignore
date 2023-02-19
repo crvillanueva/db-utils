@@ -15,6 +15,9 @@
 # VSCode
 .vscode
 
+# Pycharm
+.idea
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -59,3 +62,4 @@ dist/
 sampledata/
 az*.ini
 jpnb/
+.db_*
