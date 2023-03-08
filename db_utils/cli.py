@@ -54,6 +54,7 @@ app = typer.Typer()
 
 app.add_typer(sqla_cli.app, name="autogen")
 app.add_typer(inspect_app, name="inspect")
+app.add_typer(sqla_cli.app, name="table")
 
 # for table pretty output
 console = Console()
@@ -194,7 +195,7 @@ def time_query(query: str = typer.Argument(...)):
     )
 
 
-def create_db_metadata_files(db_url: str):
+def create_db_metadata_files(db_url: str, reflect_views: bool = False):
     """
     Create a file with the metadata of the database.
     """
@@ -203,14 +204,17 @@ def create_db_metadata_files(db_url: str):
     metadata: Dict[str, list] = {}
     for schema in inspector.get_schema_names():
         metadata[schema] = []
-        for table_name in inspector.get_table_names(schema=schema):
+        tables = inspector.get_table_names(schema=schema)
+        if reflect_views:
+            tables.extend(inspector.get_view_names(schema=schema))
+        for table_name in tables:
             metadata[schema].append(table_name)
     with open(".db_metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
 
 
 @app.command()
-def create_metatada(ctx: typer.Context):
+def create_metatada(ctx: typer.Context, reflect_views: bool = typer.Option(False)):
     """
     Create a file with the metadata of the database.
     """
@@ -220,7 +224,7 @@ def create_metatada(ctx: typer.Context):
         transient=False,
     ) as progress:
         progress.add_task("Creating metadata file...", total=100)
-        create_db_metadata_files(ctx.obj.db_url_string)
+        create_db_metadata_files(ctx.obj.db_url_string, reflect_views)
     typer.secho(
         f"Metadata file created at '{os.path.join(os.getcwd(), db_metadata_filename)}'",
         fg=typer.colors.GREEN,

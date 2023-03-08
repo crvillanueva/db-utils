@@ -3,8 +3,6 @@ import subprocess
 from typing import List
 
 import typer
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.table import Table
 from sqlalchemy import MetaData, Table, create_engine
 
 from db_utils.config import db_url_default_key_name
@@ -26,8 +24,17 @@ def callback():
 @app.command("models")
 def autogen_database_models(
     schema: str = typer.Option(None, "--schema", "-s"),
-    tables: list[str] = typer.Option(None, "--tables", "-t"),
-    output: str = typer.Option("model", "--output", "-o"),
+    tables: list[str] = typer.Option(
+        None,
+        "--tables",
+        "-t",
+        autocompletion=autocomplete_tables,
+        help="Tables to generate models for.",
+    ),
+    output: str = typer.Option(
+        "model", "--output", "-o", help="Generate SQLAlchemy code as table or model"
+    ),
+    output_filename: str = typer.Option("autogen_models.py", "--output-file", "-f"),
 ):
     """
     Autogenerate models from database to file.
@@ -37,7 +44,6 @@ def autogen_database_models(
     cmd = [
         "sqlacodegen",
     ]
-    output_filename = "autogen_models.py"
     if schema:
         cmd += ["--schema", schema]
         output_filename = f"{schema}_{output_filename}"
@@ -45,8 +51,10 @@ def autogen_database_models(
     if output == "table":
         cmd += ["--generator", "tables"]
     if tables:
-        cmd += ["--tables"]
-        cmd += tables
+        for table in tables:
+            cmd += ["--tables", table]
+        # cmd += ["--tables"]
+        # cmd += tables
     cmd += [db_url, "--outfile", output_filename]
     # with Progress(
     #     SpinnerColumn(),
