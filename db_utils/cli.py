@@ -97,10 +97,25 @@ def callback(
         ctx.obj = State(db_url=db_url)
 
 
+
+
+class KeyWordOptions(str, Enum):
+    UPPER = "upper"
+    LOWER = "lower"
+    CAPITALIZE = "capitalize"
+
+
 @app.command()
-def format(sql_query: Optional[str] = typer.Argument(None)):
+def format(
+    sql_query: Optional[str] = typer.Argument(None),
+    comma_first: bool = typer.Option(False, "--comma-first", "-c"),
+    keyword_case: KeyWordOptions = typer.Option(
+        KeyWordOptions.UPPER, "--keyword-case", "-k"
+    ),
+    python_output: bool = typer.Option(False, "--python-output", "-p"),
+):
     """
-    Format SQL query.
+    Format SQL query and copy it to clipboard. If not argument is given use clipboard.
     """
     if sql_query is None:
         # read from clipboard if not given as argument
@@ -111,7 +126,12 @@ def format(sql_query: Optional[str] = typer.Argument(None)):
             )
     try:
         formated_sql_string = format_sql(
-            sql_query, reindent=False, reindent_aligned=True, keyword_case="upper"
+            sql_query,
+            reindent=False,
+            reindent_aligned=True,
+            keyword_case=keyword_case.value,
+            comma_first=comma_first,
+            output_format="python" if python_output else None,
         )
     except Exception as e:
         typer_error_msg_to_stdout(e)

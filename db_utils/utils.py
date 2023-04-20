@@ -1,13 +1,13 @@
 import json
+import logging
+import pathlib
 import subprocess
 import tempfile
-import pathlib
 
 import typer
-from sqlalchemy.engine import Connectable
-from sqlalchemy import inspect
 from nltk.stem import PorterStemmer
-from sqlalchemy.engine import make_url
+from sqlalchemy import inspect
+from sqlalchemy.engine import Connectable
 from sqlalchemy.engine.url import URL
 
 
@@ -19,6 +19,7 @@ def get_stem_word(word: str):
 def get_standard_db_url_from_sqla(url: URL) -> str:
     if not url.drivername:
         return str(url)
+    logging.debug(f"{url.get_backend_name()}://{url.username}:{url.password}@{url.host}:{url.port}/{url.database}")
     return f"{url.get_backend_name()}://{url.username}:{url.password}@{url.host}:{url.port}/{url.database}"
 
 
