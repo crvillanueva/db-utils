@@ -3,8 +3,8 @@ from typing import Container, List, Optional, Type
 import stringcase
 from pydantic import BaseConfig
 from sqlalchemy import Column, MetaData
-from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm.properties import ColumnProperty
 
@@ -25,13 +25,11 @@ def sqlalchemy_model_to_pydantic_model(
 ):  # -> Type[BaseModel]
     table_name: str = db_model.__table__.name
     table_name_singular = get_stem_word(table_name)
-    
+
     string_model_repr = (
         f"class {stringcase.capitalcase(table_name_singular)}In(BaseModelCustom):\n"
     )
-    string_model_repr_in = (
-        f"""class {stringcase.capitalcase(table_name_singular)}({stringcase.capitalcase(table_name_singular)}In):"""
-    )
+    string_model_repr_in = f"""class {stringcase.capitalcase(table_name_singular)}({stringcase.capitalcase(table_name_singular)}In):"""
 
     mapper = inspect(db_model)
     fields = {}
@@ -73,15 +71,18 @@ def sqlalchemy_model_to_pydantic_model(
 """
     print(string_model_repr)
     return string_model_repr
-    
+
     # pydantic_model = create_model(
     #     db_model.__name__, __config__=config, **fields  # type: ignore
     # )
     # return pydantic_model
 
 
-
-def main(engine: Engine, schema_name: Optional[str] = None, tables: Optional[List[str]] = None):
+def main(
+    engine: Engine,
+    schema_name: Optional[str] = None,
+    tables: Optional[List[str]] = None,
+):
     """Create Pydantic models from SQLAlchemy models."""
 
     metadata = MetaData()
@@ -104,7 +105,7 @@ class BaseModelCustom(BaseModel):
         orm_mode = True
         allow_population_by_field_name = True
         use_enum_values = True
-        
+
 """
     for model in Base.classes:
         file_template += sqlalchemy_model_to_pydantic_model(model)

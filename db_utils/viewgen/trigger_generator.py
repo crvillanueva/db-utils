@@ -7,7 +7,6 @@ from sqlalchemy import (
     MetaData,
     Table,
     create_engine,
-    inspect,
     select,
     text,
 )
@@ -20,7 +19,6 @@ from db_utils.utils import get_stem_word
 def inspect_related_tables(
     db_url: str, table_name: str, schema_name: Optional[str] = None
 ):
-
     engine = create_engine(db_url, future=True)
 
     metadata = MetaData(schema=schema_name)
@@ -193,7 +191,7 @@ def create_triggers_str(
     related_tables_names: List[str],
     columns_not_related_no_pk: List[str],
 ):
-    from jinja2 import Environment, PackageLoader, select_autoescape
+    from jinja2 import Environment
 
     env = Environment(
         loader=FileSystemLoader("templates"),
@@ -228,36 +226,6 @@ END
     print(final_trigger_template)
 
 
-#     import pypika
-#     from pypika import Query, Tables
-#     table_pypi = pypika.Table(table_name, schema=schema_name, alias="I")
-#     related_tables = Tables(*related_tables_names)
-
-
-#     query_trigger = Query.update(table_pypi).set()
-#     for table in related_tables:
-#         query_trigger.join(table)
-
-#     view_name = f"IOV.GV_{table_name}"
-#     template_trigger_update = f"""
-# CREATE TRIGGER [IOV].[trg_{view_name}_U]
-# ON {view_name}
-# INSTEAD OF UPDATE
-# AS
-# BEGIN
-#     UPDATE I
-#     SET I.IdInfraestructuras=i1.IdInfraestructuras,
-#         I.IdInstrumentos=I.IdInstrumentos,
-#         I.FechaInstalacion=II.FechaInstalacion,
-#         I.FechaDesinstalacion=II.FechaDesinstalacion,
-#         I.Comentario=II.Comentario
-#     FROM {schema_name}.{table_name} I
-#     INNER JOIN INSERTED II ON I.IdInstalacionInstrumentos = II.IdInstalacionInstrumentos
-#     INNER JOIN hnv.Infraestructuras i1 ON I.IdInfraestructuras = i1.IdInfraestructuras
-#     INNER JOIN hnv.Instrumentos i2 ON I.IdInstrumentos = i2.IdInstrumentos
-# END
-#     """
-
 if __name__ == "__main__":
     create_triggers_str(
         "InstalacionInstrumentos",
@@ -269,11 +237,3 @@ if __name__ == "__main__":
             "Comentarios",
         ],
     )
-    # create_triggers_str("InstalacionInstrumentos", "hnv", related_names=["Infraestructuras", "Instrumentos"])
-    # inspect_related_tables(
-    #     "mssql+pyodbc://adm_hidronvstg@hidronv-stg-dbs:sVQ4Wwwg3wRUJags@hidronv-stg-dbs.database.windows.net:1433/hidronv-stg-db?driver=ODBC+Driver+17+for+SQL+Server",
-    #     schema_name="hnv",
-    #     table_name="InstalacionInstrumentos",
-    # table_name="GV_InstalacionIntrumentos",
-    # schema_name="IOV",
-    # )

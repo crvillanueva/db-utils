@@ -3,13 +3,13 @@
 CLI tool for basic database operations with SQLAlchemy. It optionally requires [usql](https://github.com/xo/usql) for the `connect` command.
 
 The tool searchs for a `DB_CONNECTION_URL` environmental variable.
-                                                                                                                                                              
+
 # Usage
 
- Usage: dbu [OPTIONS] COMMAND [ARGS]...                                                                                                                       
-                                                                                                                                                              
- Database utilities with Python                                                                                                                               
-                                                                                                                                                              
+ Usage: dbu [OPTIONS] COMMAND [ARGS]...
+
+ Database utilities with Python
+
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ --env-file                    TEXT  Path to env-file. [default: .env]                                                                                      │
 │ --db-url-key          -k      TEXT  Key name of the database URL in the env-file. [default: DB_CONNECTION_URL]                                             │
@@ -34,8 +34,6 @@ The tool searchs for a `DB_CONNECTION_URL` environmental variable.
 ```bash
 dbu inspect database tables
 ```
-
-
 
 # Install autocompletion
 

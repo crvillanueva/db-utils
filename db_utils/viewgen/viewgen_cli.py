@@ -1,7 +1,4 @@
-from typing import List
-
 import typer
-from sqlalchemy import create_engine
 
 from db_utils.exceptions import NoDBUrlFoundException
 from db_utils.url import get_db_url_value_from_env_file

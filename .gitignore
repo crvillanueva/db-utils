@@ -63,3 +63,4 @@ sampledata/
 az*.ini
 jpnb/
 .db_*
+*.db

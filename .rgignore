@@ -1,2 +1,3 @@
 !*.env
 !az*.toml
+!.db_metadata.json

@@ -1,18 +1,13 @@
-from enum import Enum
+from typing import Annotated
 
 import typer
 from rich.console import Console
 from rich.table import Table
 from sqlalchemy import create_engine, inspect
 
-from db_utils.inspect.table import app as inspect_table_app
+from db_utils.inspect.table.cli import app as inspect_table_app
 
-
-class InspectDbEnum(str, Enum):
-    tables = "tables"
-    schemas = "schemas"
-    views = "views"
-
+from .enums import InspectDbEnum
 
 app = typer.Typer()
 
@@ -34,7 +29,7 @@ def callback():
 def inspect_database(
     ctx: typer.Context,
     db_object_type: InspectDbEnum,
-    schema_name: str = typer.Option(None, "--schema", "-s"),
+    schema_name: Annotated[str, typer.Option(..., "--schema", "-s")],
 ):
     """
     Inspect database objects.

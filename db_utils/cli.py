@@ -1,34 +1,34 @@
 import json
 import os
-import pathlib
-import re
 import subprocess
+import time
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, Optional, TypedDict
+from typing import Annotated, Dict, Optional, TypedDict
 
 import pyperclip
 import typer
-from prompt_toolkit import prompt
-from pyfzf.pyfzf import FzfPrompt
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.syntax import Syntax
 from rich.table import Table
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from sqlparse import format as format_sql
 
-from .autogen import sqla_cli
+from db_utils.enums import FormatKeyWordOption
+from db_utils.url import cli as cli_url
+
+from .autogen import cli as cli_autogen
 from .cli_utils import typer_error_msg_to_stdout
 from .config import db_metadata_filename, db_url_default_key_name
 from .exceptions import NoDBUrlFoundException
-from .inspect.main import app as inspect_app
-from .url import get_db_url_key_list_from_env_file, get_db_url_value_from_env_file
+from .inspect import cli as cli_inspect
+from .run import cli as cli_run
 from .utils import (
+    get_db_conn_template_from_url,
+    get_db_url_from_env_file,
+    get_db_url_key_list_from_env_file,
     get_standard_db_url_from_sqla,
-    get_str_template_db_connection_from_url,
 )
 from .viewgen.trigger_generator import inspect_related_tables
 
@@ -52,9 +52,11 @@ state: CLIState = {}
 # SECTION: App definition
 app = typer.Typer()
 
-app.add_typer(sqla_cli.app, name="autogen")
-app.add_typer(inspect_app, name="inspect")
-app.add_typer(sqla_cli.app, name="table")
+# app.add_typer(cli_autogen.app, name="autogen")
+app.add_typer(cli_autogen.app, name="table")
+app.add_typer(cli_inspect.app, name="inspect")
+app.add_typer(cli_url.app, name="url")
+app.add_typer(cli_run.app, name="run")
 
 # for table pretty output
 console = Console()
@@ -64,53 +66,59 @@ table = Table(show_header=True, header_style="bold magenta")
 @app.callback()
 def callback(
     ctx: typer.Context,
-    env_file: str = typer.Option(".env", help="Path to env-file."),
-    db_url_key: str = typer.Option(
-        db_url_default_key_name,
-        "--db-url-key",
-        "-k",
-        help="Key name of the database URL in the env-file.",
-        autocompletion=get_db_url_key_list_from_env_file,
-    ),
+    silent: bool = typer.Option(False, "--silent", "-s"),
+    db_url: Annotated[
+        Optional[str], typer.Option(..., "--db-url", "-u", help="Database URL")
+    ] = None,
+    env_file: Annotated[
+        str, typer.Option(..., ".env", help="Path to env-file.")
+    ] = ".env",
+    env_key_db_url: Annotated[
+        str,
+        typer.Option(
+            ...,
+            "--env-key-db-url",
+            "-k",
+            help="Key name of the database URL.",
+            autocompletion=get_db_url_key_list_from_env_file,
+        ),
+    ] = db_url_default_key_name,
 ):
     """
     Database utilities with Python
     """
-    db_url = None
-
-    try:
-        db_url = get_db_url_value_from_env_file(env_file, db_url_key)
-    except FileNotFoundError:
-        typer.secho(
-            f"No env-file found in current directory {os.getcwd()}",
-            fg=typer.colors.YELLOW,
-        )
-    except NoDBUrlFoundException:
-        typer.secho(
-            f"No enviromental variable key '{db_url_default_key_name}' in env-file",
-            fg=typer.colors.YELLOW,
-        )
-    if db_url:
-        state["db_url"] = db_url
-        os.environ[db_url_default_key_name] = str(db_url)
-        state["db_url_string"] = str(db_url)
-        ctx.obj = State(db_url=db_url)
-
-
-
-
-class KeyWordOptions(str, Enum):
-    UPPER = "upper"
-    LOWER = "lower"
-    CAPITALIZE = "capitalize"
+    db_url_obj = None
+    if not db_url:
+        try:
+            db_url_obj = get_db_url_from_env_file(env_file, env_key_db_url)
+        except FileNotFoundError:
+            if not silent:
+                typer.secho(
+                    f"No env-file found in current directory {os.getcwd()}",
+                    fg=typer.colors.YELLOW,
+                )
+        except NoDBUrlFoundException:
+            if not silent:
+                typer.secho(
+                    f"No enviromental variable key {db_url_default_key_name!r} in env-file",
+                    fg=typer.colors.YELLOW,
+                )
+    else:
+        db_url_obj = make_url(db_url)
+    if db_url_obj:
+        state["db_url"] = db_url_obj
+        db_url_str = db_url_obj.__to_string__(hide_password=False)
+        os.environ[db_url_default_key_name] = db_url_str
+        state["db_url_string"] = db_url_str
+        ctx.obj = State(db_url=db_url_obj)
 
 
 @app.command()
 def format(
     sql_query: Optional[str] = typer.Argument(None),
     comma_first: bool = typer.Option(False, "--comma-first", "-c"),
-    keyword_case: KeyWordOptions = typer.Option(
-        KeyWordOptions.UPPER, "--keyword-case", "-k"
+    keyword_case: FormatKeyWordOption = typer.Option(
+        FormatKeyWordOption.UPPER, "--keyword-case", "-k"
     ),
     python_output: bool = typer.Option(False, "--python-output", "-p"),
 ):
@@ -135,6 +143,7 @@ def format(
         )
     except Exception as e:
         typer_error_msg_to_stdout(e)
+        raise typer.Exit(1)
 
     pyperclip.copy(formated_sql_string)
     typer.secho(formated_sql_string, bold=True)
@@ -142,8 +151,8 @@ def format(
 
 @app.command()
 def url(
-    no_driver: bool = typer.Option(False, "--no-driver", "-d"),
-    template: bool = typer.Option(False, "--template", "-t"),
+    no_driver: Annotated[bool, typer.Option(..., "--no-driver", "-d")] = False,
+    template: Annotated[bool, typer.Option(..., "--template", "-t")] = False,
 ):
     """
     Show the database URL and copy it to clipboard.
@@ -154,8 +163,9 @@ def url(
         typer_error_msg_to_stdout(
             f"No '{db_url_default_key_name}' environmental variable in file or invalid URL"
         )
+        raise typer.Exit(1)
     if template:
-        db_template = get_str_template_db_connection_from_url(db_url)
+        db_template = get_db_conn_template_from_url(db_url)
         print(db_template)
         pyperclip.copy(db_template)
         return
@@ -200,9 +210,7 @@ def time_query(query: str = typer.Argument(...)):
         typer_error_msg_to_stdout(
             f"No '{db_url_default_key_name}' environmental variable in file or invalid URL"
         )
-    import time
-
-    from sqlalchemy import text
+        raise typer.Exit(1)
 
     start_time = time.perf_counter()
     engine = create_engine(db_url)
@@ -262,74 +270,79 @@ def viewgen(
     inspect_related_tables(state["db_url_string"], table, schema)
 
 
-@app.command()
-def run():
-    """
-    Run sql script from file.
-    """
-    db_url = state["db_url_string"]
-    # select file from fzf prompt
-    sql_scripts_directory = pathlib.Path("sql/scripts/")
-    if not sql_scripts_directory.exists():
-        typer_error_msg_to_stdout(f"Directory '{sql_scripts_directory}' does not exist")
-    sql_files = [
-        path.name for path in pathlib.Path(sql_scripts_directory).glob("*.sql")
-    ]
-    file = FzfPrompt().prompt(
-        sql_files, "--prompt='Select SQL file: ' --reverse --height=50%"
-    )
-    if not file:
-        typer_error_msg_to_stdout("No file selected")
-
-    # obtain text query from file
-    with open(sql_scripts_directory / file[0], "r") as f:
-        query_str = f.read()
-
-    # find parameters
-    # query_params = re.findall(r"\s:(\w+)\b", query_str)
-
-    # find parameters with regex for {} format
-    query_params = re.findall(r"\s{(\w+)\b}", query_str)
-    # if query params use python prompt toolkit to get input
-    query_params_dict = {}
-    if query_params:
-        syntax = Syntax(query_str, "sql", theme="ansi_dark", line_numbers=True)
-        console.print(syntax)
-
-        for param in query_params:
-            query_params_dict[param] = prompt(f"{param}: ")  # placeholder="value test")
-        print()
-
-        query_str = query_str.format(**query_params_dict)
-
-    formated_sql_string = format_sql(
-        query_str, reindent=False, reindent_aligned=True, keyword_case="upper"
-    )
-
-    # run query
-    db_info_template = get_str_template_db_connection_from_url(state["db_url"], True)
-    print("Running query: ")
-    syntax = Syntax(formated_sql_string, "sql", theme="dracula")
-    console.print(syntax)
-    print()
-    print("On database: ")
-    print(db_info_template)
-
-    try:
-        engine = create_engine(db_url)
-        results_dicts = []
-        with engine.connect() as connection:
-            results = connection.execute(text(query_str), **query_params_dict).all()
-        for row in results:
-            results_dicts.append(dict(row))
-    except Exception as e:
-        typer_error_msg_to_stdout(f"Database/Query error:\n\n {str(e)}")
-
-    # print rich table
-    rich_table = Table(show_header=True, header_style="bold magenta")
-    for key in results_dicts[0].keys():
-        rich_table.add_column(key, style="dim", no_wrap=True)
-    for row in results_dicts:
-        row_values = [str(row[key]) for key in row.keys()]
-        rich_table.add_row(*row_values)
-    console.print(rich_table)
+# @app.command()
+# def run(sql_file: str = typer.Argument(...)):
+#     """
+#     Run sql script from file and show results in a table.
+#     """
+#     db_url = state["db_url_string"]
+#     # select file from fzf prompt
+#     if not sql_file:
+#         sql_scripts_directory = pathlib.Path("sql/scripts/")
+#         if not sql_scripts_directory.exists():
+#             typer_error_msg_to_stdout(
+#                 f"Directory '{sql_scripts_directory}' does not exist"
+#             )
+#             raise typer.Exit(1)
+#     sql_files = [
+#         path.name for path in pathlib.Path(sql_scripts_directory).glob("*.sql")
+#     ]
+#     file = FzfPrompt().prompt(
+#         sql_files, "--prompt='Select SQL file: ' --reverse --height=50%"
+#     )
+#     if not file:
+#         typer_error_msg_to_stdout("No file selected")
+#         raise typer.Exit(1)
+#
+#     # obtain text query from file
+#     with open(sql_scripts_directory / file[0], "r") as f:
+#         sql_file = f.read()
+#
+#     # find parameters with regex for {} format
+#     query_params = re.findall(r"\s{(\w+)\b}", sql_file)
+#     # if query params use python prompt toolkit to get input
+#     query_params_dict = {}
+#     if query_params:
+#         syntax = Syntax(sql_file, "sql", theme="ansi_dark", line_numbers=True)
+#         console.print(syntax)
+#
+#         for param in query_params:
+#             query_params_dict[param] = prompt(f"{param}: ")  # placeholder="value test")
+#         print()
+#
+#         sql_file = sql_file.format(**query_params_dict)
+#
+#     formated_sql_string = format_sql(
+#         sql_file, reindent=False, reindent_aligned=True, keyword_case="upper"
+#     )
+#
+#     # run query
+#     db_info_template = get_db_conn_template_from_url(state["db_url"], True)
+#     print("Running query: ")
+#     syntax = Syntax(formated_sql_string, "sql", theme="dracula")
+#     console.print(syntax)
+#     print()
+#     print("On database: ")
+#     print(db_info_template)
+#
+#     # sqlparse.
+#
+#     try:
+#         engine = create_engine(db_url)
+#         results_dicts = []
+#         with engine.connect() as connection:
+#             results = connection.execute(text(sql_file), **query_params_dict).all()
+#         for row in results:
+#             results_dicts.append(dict(row))
+#     except Exception as e:
+#         typer_error_msg_to_stdout(f"Database/Query error:\n\n {str(e)}")
+#         raise typer.Exit(1)
+#
+#     # print rich table
+#     rich_table = Table(show_header=True, header_style="bold magenta")
+#     for key in results_dicts[0].keys():
+#         rich_table.add_column(key, style="dim", no_wrap=True)
+#     for row in results_dicts:
+#         row_values = [str(row[key]) for key in row.keys()]
+#         rich_table.add_row(*row_values)
+#     console.print(rich_table)

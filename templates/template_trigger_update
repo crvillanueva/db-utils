@@ -1,5 +1,5 @@
 UPDATE I
-SET 
+SET
 {% for related_table in related_table_names %}
     I.Id{{ related_table }}={{schema_table}}.{{related_table}}.Id{{ related_table }},
 {% endfor %}
