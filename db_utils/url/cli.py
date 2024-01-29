@@ -67,6 +67,6 @@ def make(
         port=port,
         database=database,
     )
-    url_str = url.__to_string__(hide_password=False)
+    url_str = url.render_as_string(hide_password=False)
     typer.secho(url_str)
     pyperclip.copy(url_str)

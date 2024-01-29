@@ -7,24 +7,25 @@ authors = ["Cristobal <cristobaljvp@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.11"
 pyperclip = "^1.8.2"
-SQLAlchemy = "^2.0.20"
+SQLAlchemy = "^2.0.21"
 python-dotenv = "^0.20.0"
 colorama = "^0.4.5"
 pyodbc = "^4.0.32"
 nltk = "^3.7"
 sqlparse = "^0.4.2"
 pydantic = "^1.9.1"
-sqlacodegen = "3.0.0rc1"
+sqlacodegen = "3.0.0rc3"
 stringcase = "^1.2.0"
 PyPika = "^0.48.9"
 Jinja2 = "^3.1.2"
 psycopg2-binary = "^2.9.3"
 rich = "^13.5.2"
-typer = {extras = ["all"], version = "^0.9.0"}
+typer = "^0.9.0"
 pyfzf = "^0.3.1"
 prompt-toolkit = "^3.0.36"
 sqlalchemy = "^2.0.4"
 textual = "^0.35.1"
+textual-dev = "^1.2.1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.961"

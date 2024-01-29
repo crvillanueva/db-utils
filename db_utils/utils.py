@@ -30,16 +30,15 @@ def get_standard_db_url_from_sqla(url: URL) -> str:
     if "@" in password or "#" in password:
         logging.debug("Encountered special character in password, encoding password")
         password = quote_plus(password)
-    logging.debug(
-        f"{url.get_backend_name()}://{url.username}:{password}@{url.host}:{url.port}/{url.database}"
-    )
-    return f"{url.get_backend_name()}://{url.username}:{url.password}@{url.host}:{url.port}/{url.database}"
+    standard_url = f"{url.get_backend_name()}://{url.username}:{url.password}@{url.host}:{url.port}/{url.database}"
+    logging.debug(standard_url)
+    return standard_url
 
 
 def get_db_conn_template_from_url(
     db_url: URL, password_hidden: bool | None = False
 ) -> str:
-    """Get template connection string from SQLAlchemy URL object."""
+    """Get template connection string from SQLAlchemy URL object"""
     info_template = ""
 
     max_key_len = max([len(key) for key in db_url.translate_connect_args().keys()])

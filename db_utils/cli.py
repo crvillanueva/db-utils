@@ -44,7 +44,7 @@ class State:
 
     @property
     def db_url_string(self) -> str:
-        return self.db_url.__to_string__(hide_password=False)
+        return self.db_url.render_as_string(hide_password=False)
 
 
 state: CLIState = {}
@@ -107,7 +107,7 @@ def callback(
         db_url_obj = make_url(db_url)
     if db_url_obj:
         state["db_url"] = db_url_obj
-        db_url_str = db_url_obj.__to_string__(hide_password=False)
+        db_url_str = db_url_obj.render_as_string(hide_password=False)
         os.environ[db_url_default_key_name] = db_url_str
         state["db_url_string"] = db_url_str
         ctx.obj = State(db_url=db_url_obj)
@@ -116,7 +116,7 @@ def callback(
 @app.command()
 def format(
     sql_query: Optional[str] = typer.Argument(None),
-    comma_first: bool = typer.Option(False, "--comma-first", "-c"),
+    comma_first: Annotated[bool, typer.Option("--comma-first", "-c")] = False,
     keyword_case: FormatKeyWordOption = typer.Option(
         FormatKeyWordOption.UPPER, "--keyword-case", "-k"
     ),
@@ -143,7 +143,6 @@ def format(
         )
     except Exception as e:
         typer_error_msg_to_stdout(e)
-        raise typer.Exit(1)
 
     pyperclip.copy(formated_sql_string)
     typer.secho(formated_sql_string, bold=True)
@@ -163,7 +162,6 @@ def url(
         typer_error_msg_to_stdout(
             f"No '{db_url_default_key_name}' environmental variable in file or invalid URL"
         )
-        raise typer.Exit(1)
     if template:
         db_template = get_db_conn_template_from_url(db_url)
         print(db_template)
@@ -186,12 +184,13 @@ def connect(db_url_string: str = typer.Argument("")):
     """
     if not db_url_string:
         try:
-            db_url_string = str(state["db_url"])
+            db_url = state["db_url"]
         except KeyError:
             typer_error_msg_to_stdout(
                 f"No '{db_url_default_key_name}' environmental variable in file or invalid URL"
             )
-    db_url = make_url(db_url_string)
+    else:
+        db_url = make_url(db_url_string)
     standard_url = get_standard_db_url_from_sqla(db_url)
 
     cmd = subprocess.run(["usql", standard_url])
@@ -210,7 +209,6 @@ def time_query(query: str = typer.Argument(...)):
         typer_error_msg_to_stdout(
             f"No '{db_url_default_key_name}' environmental variable in file or invalid URL"
         )
-        raise typer.Exit(1)
 
     start_time = time.perf_counter()
     engine = create_engine(db_url)
@@ -223,26 +221,35 @@ def time_query(query: str = typer.Argument(...)):
     )
 
 
-def create_db_metadata_files(db_url: str, reflect_views: bool = False):
+def create_db_metadata_files(
+    db_url: str, reflect_views: bool = False, schema: str | None = None
+):
     """
     Create a file with the metadata of the database.
     """
     engine = create_engine(db_url)
     inspector = inspect(engine)
     metadata: Dict[str, list] = {}
-    for schema in inspector.get_schema_names():
-        metadata[schema] = []
-        tables = inspector.get_table_names(schema=schema)
+    for db_schema in inspector.get_schema_names():
+        if db_schema:
+            if db_schema != schema:
+                continue
+        metadata[db_schema] = []
+        tables = inspector.get_table_names(schema=db_schema)
         if reflect_views:
-            tables.extend(inspector.get_view_names(schema=schema))
+            tables.extend(inspector.get_view_names(schema=db_schema))
         for table_name in tables:
-            metadata[schema].append(table_name)
+            metadata[db_schema].append(table_name)
     with open(".db_metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
 
 
 @app.command()
-def create_metatada(ctx: typer.Context, reflect_views: bool = typer.Option(False)):
+def create_metatada(
+    ctx: typer.Context,
+    reflect_views: bool = typer.Option(False),
+    schema: str = typer.Option(None),
+):
     """
     Create a file with the metadata of the database.
     """
@@ -252,7 +259,7 @@ def create_metatada(ctx: typer.Context, reflect_views: bool = typer.Option(False
         transient=False,
     ) as progress:
         progress.add_task("Creating metadata file...", total=100)
-        create_db_metadata_files(ctx.obj.db_url_string, reflect_views)
+        create_db_metadata_files(ctx.obj.db_url_string, reflect_views, schema)
     typer.secho(
         f"Metadata file created at '{os.path.join(os.getcwd(), db_metadata_filename)}'",
         fg=typer.colors.GREEN,
@@ -268,81 +275,3 @@ def viewgen(
     Generate a view from a table that considers related tables given their foreign keys.
     """
     inspect_related_tables(state["db_url_string"], table, schema)
-
-
-# @app.command()
-# def run(sql_file: str = typer.Argument(...)):
-#     """
-#     Run sql script from file and show results in a table.
-#     """
-#     db_url = state["db_url_string"]
-#     # select file from fzf prompt
-#     if not sql_file:
-#         sql_scripts_directory = pathlib.Path("sql/scripts/")
-#         if not sql_scripts_directory.exists():
-#             typer_error_msg_to_stdout(
-#                 f"Directory '{sql_scripts_directory}' does not exist"
-#             )
-#             raise typer.Exit(1)
-#     sql_files = [
-#         path.name for path in pathlib.Path(sql_scripts_directory).glob("*.sql")
-#     ]
-#     file = FzfPrompt().prompt(
-#         sql_files, "--prompt='Select SQL file: ' --reverse --height=50%"
-#     )
-#     if not file:
-#         typer_error_msg_to_stdout("No file selected")
-#         raise typer.Exit(1)
-#
-#     # obtain text query from file
-#     with open(sql_scripts_directory / file[0], "r") as f:
-#         sql_file = f.read()
-#
-#     # find parameters with regex for {} format
-#     query_params = re.findall(r"\s{(\w+)\b}", sql_file)
-#     # if query params use python prompt toolkit to get input
-#     query_params_dict = {}
-#     if query_params:
-#         syntax = Syntax(sql_file, "sql", theme="ansi_dark", line_numbers=True)
-#         console.print(syntax)
-#
-#         for param in query_params:
-#             query_params_dict[param] = prompt(f"{param}: ")  # placeholder="value test")
-#         print()
-#
-#         sql_file = sql_file.format(**query_params_dict)
-#
-#     formated_sql_string = format_sql(
-#         sql_file, reindent=False, reindent_aligned=True, keyword_case="upper"
-#     )
-#
-#     # run query
-#     db_info_template = get_db_conn_template_from_url(state["db_url"], True)
-#     print("Running query: ")
-#     syntax = Syntax(formated_sql_string, "sql", theme="dracula")
-#     console.print(syntax)
-#     print()
-#     print("On database: ")
-#     print(db_info_template)
-#
-#     # sqlparse.
-#
-#     try:
-#         engine = create_engine(db_url)
-#         results_dicts = []
-#         with engine.connect() as connection:
-#             results = connection.execute(text(sql_file), **query_params_dict).all()
-#         for row in results:
-#             results_dicts.append(dict(row))
-#     except Exception as e:
-#         typer_error_msg_to_stdout(f"Database/Query error:\n\n {str(e)}")
-#         raise typer.Exit(1)
-#
-#     # print rich table
-#     rich_table = Table(show_header=True, header_style="bold magenta")
-#     for key in results_dicts[0].keys():
-#         rich_table.add_column(key, style="dim", no_wrap=True)
-#     for row in results_dicts:
-#         row_values = [str(row[key]) for key in row.keys()]
-#         rich_table.add_row(*row_values)
-#     console.print(rich_table)

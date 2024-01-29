@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set
+from typing import Set
 
 from jinja2 import FileSystemLoader
 from sqlalchemy import (
@@ -17,7 +17,7 @@ from db_utils.utils import get_stem_word
 
 
 def inspect_related_tables(
-    db_url: str, table_name: str, schema_name: Optional[str] = None
+    db_url: str, table_name: str, schema_name: str | None = None
 ):
     engine = create_engine(db_url, future=True)
 
@@ -25,7 +25,7 @@ def inspect_related_tables(
 
     table_to_inspect = Table(table_name, metadata, autoload_with=engine)
 
-    columns_to_select: List[Column] = []
+    columns_to_select: list[Column] = []
     column: Column
     for column in table_to_inspect.columns:
         if column.foreign_keys:
@@ -41,7 +41,7 @@ def inspect_related_tables(
 
     foreign_keys: Set[ForeignKeyConstraint] = table_to_inspect.foreign_key_constraints
 
-    related_tables_by_columns: Dict[Column, Table] = {}
+    related_tables_by_columns: dict[Column, Table] = {}
     for fk in foreign_keys:
         source_column = fk.columns[0]
         referred_table = fk.referred_table
@@ -51,7 +51,7 @@ def inspect_related_tables(
     #     fk.referred_table for fk in foreign_keys
     # ]
 
-    not_foreign_key_columns: List[Column] = [
+    not_foreign_key_columns: list[Column] = [
         column for column in table_to_inspect.columns if not column.foreign_keys
     ]
     primary_key_column = [
@@ -171,13 +171,13 @@ def compile_sqlalchemy_object(sqlalchemy_object) -> str:
     return str(sqlalchemy_object.compile(dialect=mssql.dialect()))
 
 
-def get_joined_table(table_to_join: Table, related_tables: List[Table]) -> Table:
+def get_joined_table(table_to_join: Table, related_tables: list[Table]) -> Table:
     for related_table in related_tables:
         table_to_join = select(table_to_join).join(related_table)
     return table_to_join
 
 
-def get_related_tables_main_columns(related_tables: List[Table]):
+def get_related_tables_main_columns(related_tables: list[Table]):
     main_columns_related_tables = []
     for table in related_tables:
         column = getattr(table.c, get_stem_word(table.name))
@@ -188,8 +188,8 @@ def get_related_tables_main_columns(related_tables: List[Table]):
 def create_triggers_str(
     table_name: str,
     schema_name: str,
-    related_tables_names: List[str],
-    columns_not_related_no_pk: List[str],
+    related_tables_names: list[str],
+    columns_not_related_no_pk: list[str],
 ):
     from jinja2 import Environment
 

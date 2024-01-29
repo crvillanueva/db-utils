@@ -1,5 +1,6 @@
 import logging
 
+import pyperclip
 from rich.text import Text
 from textual.app import App, ComposeResult, log
 from textual.widgets import DataTable, Footer
@@ -14,7 +15,7 @@ logging.basicConfig(
 class TableApp(App):
     BINDINGS = [("c", "copy_cell_contents", "Copy"), ("b", "log_string", "Log")]
 
-    def __init__(self, rows, **kwargs):
+    def __init__(self, rows: list, **kwargs):
         self.rows = rows
         super().__init__(**kwargs)
 
@@ -26,7 +27,6 @@ class TableApp(App):
         table = self.query_one(DataTable)
         table.cursor_type = "cell"
         table.zebra_stripes = True
-        self.log(self.rows)
         table.add_columns(*self.rows[0].keys())
         row_tuples = [tuple(row.values()) for row in self.rows]
         for row in row_tuples:
@@ -35,18 +35,15 @@ class TableApp(App):
             ]
             table.add_row(*styled_row)
 
-    # def on_key(self, event: events.Key) -> None:
-    #     key = event.key
-    #     if key == "c":
-    #         self.action_copy_cell_contents()
-
     def action_log_string(self):
         log("Test")
 
     def action_copy_cell_contents(self) -> None:
         table = self.query_one(DataTable)
-        self.log(table.cursor_coordinate)
-        # pyperclip.copy(table.get_cell(*table.cursor_coordinate))
+        table.cursor_coordinate
+        row = table.get_row_at(table.cursor_coordinate.row)
+        cell = row[table.cursor_coordinate.column]
+        pyperclip.copy(str(cell))
 
 
 if __name__ == "__main__":
