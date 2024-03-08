@@ -1,3 +1,14 @@
+!.rgignore
 !*.env
+!.env.*
+!.envrc
 !az*.toml
-!.db_metadata.json
+!.notes
+!.todos
+!.tasks
+!.questions
+!.secrets
+!.*_metadata
+!sgconfig.yml
+!*autogen*.py
+!.tags

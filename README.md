@@ -6,6 +6,7 @@ The tool searchs for a `DB_CONNECTION_URL` environmental variable.
 
 # Usage
 
+```
  Usage: dbu [OPTIONS] COMMAND [ARGS]...
 
  Database utilities with Python
@@ -28,6 +29,7 @@ The tool searchs for a `DB_CONNECTION_URL` environmental variable.
 │ url                       Show the database URL and copy it to clipboard.                                                                                  │
 │ viewgen                   Generate a view from a table that considers related tables given their foreign keys.                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
 
 # Examples
 
@@ -37,4 +39,6 @@ dbu inspect database tables
 
 # Install autocompletion
 
+```bash
 dbu --install-completion
+```

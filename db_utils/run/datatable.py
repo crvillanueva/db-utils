@@ -1,8 +1,10 @@
 import logging
+from typing import Any
 
 import pyperclip
 from rich.text import Text
 from textual.app import App, ComposeResult, log
+from textual.binding import Binding
 from textual.widgets import DataTable, Footer
 
 logging.basicConfig(
@@ -13,10 +15,20 @@ logging.basicConfig(
 
 
 class TableApp(App):
-    BINDINGS = [("c", "copy_cell_contents", "Copy"), ("b", "log_string", "Log")]
+    BINDINGS = [
+        ("c", "copy_cell_contents", "Copy"),
+        ("b", "log_string", "Log"),
+        ("ctrl+d", "down_ten", "Down 10"),
+        ("ctrl+u", "up_ten", "Up 10"),
+        # vim style bindings
+        Binding("j", "down", "", show=False, priority=True),
+        Binding("k", "up", "", show=False, priority=True),
+        Binding("h", "left", "", show=False, priority=True),
+        Binding("l", "right", "", show=False, priority=True),
+    ]
 
     def __init__(self, rows: list, **kwargs):
-        self.rows = rows
+        self.rows: list[dict[str, Any]] = rows
         super().__init__(**kwargs)
 
     def compose(self) -> ComposeResult:
@@ -35,9 +47,6 @@ class TableApp(App):
             ]
             table.add_row(*styled_row)
 
-    def action_log_string(self):
-        log("Test")
-
     def action_copy_cell_contents(self) -> None:
         table = self.query_one(DataTable)
         table.cursor_coordinate
@@ -45,6 +54,30 @@ class TableApp(App):
         cell = row[table.cursor_coordinate.column]
         pyperclip.copy(str(cell))
 
+    def action_down_ten(self):
+        table = self.query_one(DataTable)
+        table.move_cursor(row=table.cursor_coordinate.row + 10)
+
+    def action_up_ten(self):
+        table = self.query_one(DataTable)
+        table.move_cursor(row=table.cursor_coordinate.row - 10)
+
+    def action_down(self):
+        table = self.query_one(DataTable)
+        table.move_cursor(row=table.cursor_coordinate.row + 1)
+
+    def action_up(self):
+        table = self.query_one(DataTable)
+        table.move_cursor(row=table.cursor_coordinate.row - 1)
+
+    def action_left(self):
+        table = self.query_one(DataTable)
+        table.move_cursor(column=table.cursor_coordinate.column - 1)
+
+    def action_right(self):
+        table = self.query_one(DataTable)
+        table.move_cursor(column=table.cursor_coordinate.column + 1)
+
 
 if __name__ == "__main__":
-    TableApp(rows=[{"A": 1, "B": 2, "C": 3}]).run()
+    pass
