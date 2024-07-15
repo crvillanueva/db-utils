@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from typing import Annotated, Dict, Optional, TypedDict
@@ -125,7 +126,9 @@ def format(
     """
     Format SQL query and copy it to clipboard. If not argument is given use clipboard.
     """
-    if sql_query is None:
+    if not sys.stdin.isatty():
+        sql_query = sys.stdin.read()
+    elif sql_query is None:
         # read from clipboard if not given as argument
         sql_query = pyperclip.paste()
         if not sql_query:
@@ -139,6 +142,7 @@ def format(
             reindent_aligned=True,
             keyword_case=keyword_case.value,
             comma_first=comma_first,
+            indent_width=4,
             output_format="python" if python_output else None,
         )
     except Exception as e:
