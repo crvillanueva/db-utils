@@ -38,7 +38,17 @@ def get_standard_db_url_from_sqla(url: URL) -> str:
 def get_db_conn_template_from_url(
     db_url: URL, password_hidden: bool | None = False
 ) -> str:
-    """Get template connection string from SQLAlchemy URL object"""
+    """Get template connection string from SQLAlchemy URL object
+
+    Return:
+        A string with the url parameters in the format:
+            host = localhost
+            port = 5432
+            database = test_db
+            username = test_user
+            password = test_password
+    """
+
     info_template = ""
 
     max_key_len = max([len(key) for key in db_url.translate_connect_args().keys()])

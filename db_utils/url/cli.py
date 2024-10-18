@@ -2,10 +2,8 @@ from typing import Annotated, Optional
 
 import pyperclip
 import typer
-from sqlalchemy import URL
+from sqlalchemy import URL, make_url
 
-from db_utils.cli_utils import typer_error_msg_to_stdout
-from db_utils.config import db_url_default_key_name
 from db_utils.url.enums import SqlAlchemyDialect
 from db_utils.url.main import create_url_from_args
 from db_utils.utils import get_db_conn_template_from_url
@@ -23,18 +21,16 @@ def callback():
 @app.command()
 def show(
     ctx: typer.Context,
+    url_str: Optional[str] = typer.Argument(None),
     no_driver: bool = typer.Option(False, "--no-driver", "-d"),
     template: bool = typer.Option(False, "--template", "-t"),
 ):
-    """
-    Shows the database URL and copy it to clipboard.
-    """
-    db_url: URL = ctx.obj.db_url
-    if not db_url:
-        typer_error_msg_to_stdout(
-            f"No '{db_url_default_key_name}' environmental variable in file or invalid URL"
-        )
-        raise typer.Exit(code=1)
+    """Shows the database URL and copies it to clipboard."""
+
+    if not url_str:
+        db_url: URL = ctx.obj.db_url
+    else:
+        db_url = make_url(url_str)
     if template:
         db_template = get_db_conn_template_from_url(db_url)
         print(db_template)
@@ -59,6 +55,8 @@ def make(
     host: Annotated[str, typer.Option(..., "--host", "-h")],
     port: Annotated[Optional[int], typer.Option(..., "--port", "-P")] = None,
 ):
+    """Creates a database URL given parameters and copies it to clipboard."""
+
     url = create_url_from_args(
         dialect,
         username=username,
