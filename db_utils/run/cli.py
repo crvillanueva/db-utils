@@ -2,6 +2,7 @@ import json
 import pathlib
 import re
 import subprocess
+import sys
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -45,7 +46,7 @@ def query(
         selected_query_name = query_name
     selected_query = [q for q in queries_data if q["name"] == selected_query_name][0]
     if not selected_query_name:
-        print("[red]No query selected[/red]")
+        print("[red]No query selected[/red]", file=sys.stderr)
     # obtain text query from file
     if db_url.drivername == "sqlite":
         if not pathlib.Path(db_url.database).exists():
@@ -56,7 +57,9 @@ def query(
     query_str = selected_query["query"]
     # Read json results
     cmd_args = ["usql", "-c", query_str, db_url_str, "--json", "-q"]
-    print(f"Running: {' '.join(cmd_args)}")
+
+    print(f"Running: {' '.join(cmd_args)}", file=sys.stderr)
+
     run_results = subprocess.run(cmd_args, capture_output=True)
     if run_results.returncode != 0:
         raise ValueError(run_results.stderr.decode())
@@ -66,7 +69,7 @@ def query(
         print(run_results.stdout)
         raise ValueError("Invalid JSON output")
     if not query_results:
-        print("[red]No results[/red]")
+        print("[red]No results[/red]", file=sys.stderr)
         return
     if output == "json":
         print_json(data=query_results)

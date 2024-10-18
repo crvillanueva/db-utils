@@ -3,7 +3,7 @@ from typing import Any
 
 import pyperclip
 from rich.text import Text
-from textual.app import App, ComposeResult, log
+from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import DataTable, Footer
 
